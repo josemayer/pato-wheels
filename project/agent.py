@@ -37,6 +37,8 @@ from pyglet.window import key
 import numpy as np
 import math
 import random
+from connections import get_motor_left_matrix, get_motor_right_matrix
+from preprocessing import preprocess
 from duckievillage import create_env, FRONT_VIEW_MODE
 import cv2
 import tensorflow
@@ -49,7 +51,23 @@ class Agent:
         self.motor_gain = 0.68*0.0784739898632288
         self.motor_trim = 0.0007500911693361842
         self.initial_pos = env.get_position()
-        
+
+        # Color segmentation hyperspace
+        self.inner_lower = np.array([22, 93, 160])
+        self.inner_upper = np.array([45, 255, 255])
+        self.outer_lower = np.array([0, 0, 130])
+        self.outer_upper = np.array([179, 85, 255])
+
+        self.l_max = -math.inf
+        self.r_max = -math.inf
+        self.l_min = math.inf
+        self.r_min = math.inf
+        self.left = None
+        self.right = None
+
+        self.img = self.env.front()
+        self.img_shape = self.img.shape[0], self.img.shape[1]
+
         self.score = 0
 
         key_handler = key.KeyStateHandler()
@@ -62,23 +80,64 @@ class Agent:
         V_r = (self.motor_gain + self.motor_trim)*(v+w*self.baseline)/self.radius
         return V_l, V_r
 
-    def preprocess(self):
-        pass
-
     def send_commands(self, dt: float):
         velocity = 0
         rotation = 0
+        
+        img = self.env.front() 
+        
+        if img is None:
+            return 0.0, 0.0
 
-        if self.key_handler[key.W]:
-            velocity += 0.5
-        if self.key_handler[key.A]:
-            rotation += 1.5
-        if self.key_handler[key.S]:
-            velocity -= 0.5
-        if self.key_handler[key.D]:
-            rotation -= 1.5
+        if self.left is None:
+            # if it is the first time, we initialize the structures
+            shape = self.img_shape
+            self.left = get_motor_left_matrix(shape)
+            self.right = get_motor_right_matrix(shape)
 
-        pwm_left, pwm_right = self.get_pwm_control(velocity, rotation)
+        # let's take only the intensity of IMG
+        P = preprocess(img)
+        # now we just compute the activation of our sensors
+        l = float(np.sum(P * self.left))
+        r = float(np.sum(P * self.right))
+
+
+        # These are big numbers -- we want to normalize them.
+        # We normalize them using the history
+
+        # first, we remember the high/low of these raw signals
+        self.l_max = max(l, self.l_max)
+        self.r_max = max(r, self.r_max)
+        self.l_min = min(l, self.l_min)
+        self.r_min = min(r, self.r_min)
+
+        # now rescale from 0 to 1
+        ls = rescale(l, self.l_min, self.l_max)
+        rs = rescale(r, self.r_min, self.r_max)
+
+        gain = self.motor_gain
+        const = 0.2
+        pwm_left = const + ls * gain
+        pwm_right = const + rs * gain
+        
+       # run image processing routines
+        #P, Q, M = self.preprocess(img) # returns inner, outter and combined mask matrices
+        print('>', pwm_left, pwm_right) # uncomment for debugging
+        # Now send command to motors
+
+        #if self.key_handler[key.W]:
+        #    velocity += 0.5
+        #if self.key_handler[key.A]:
+        #    rotation += 1.5
+        #if self.key_handler[key.S]:
+        #    velocity -= 0.5
+        #if self.key_handler[key.D]:
+        #    rotation -= 1.5
+
+        #pwm_left, pwm_right = self.get_pwm_control(velocity, rotation)
         _, r, _, _ = self.env.step(pwm_left, pwm_right)
-        self.score += (r-self.score)/self.env.step_count
-        self.env.render(text = f", score: {self.score:.3f}")
+
+def rescale(a: float, L: float, U: float):
+    if np.allclose(L, U):
+        return 0.0
+    return (a - L) / (U - L)
