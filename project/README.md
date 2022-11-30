@@ -49,7 +49,7 @@ o único arquivo código-fonte a ser entregue no e-disciplinas. No entanto, a ex
 da tarefa deve ser feita através de [challenge.py](./challenge.py) por meio do comando:
 
 ```bash
-python3 assignments/challenge/challenge.py assignments/challenge/examples/challenge_n
+python3 project/challenge.py project/examples/challenge_n
 ```
 
 Onde o `n` acima é quaisquer um dos possíveis arquivos `challenge_*` no diretório de
