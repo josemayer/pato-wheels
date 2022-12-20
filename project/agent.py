@@ -71,8 +71,8 @@ class Agent:
         self.outer_left_motor_matrix = np.zeros(shape=img_shape, dtype="float32")
         self.outer_right_motor_matrix = np.zeros(shape=img_shape, dtype="float32")
         # Connecition matrices
-        self.inner_left_motor_matrix[:, :img_shape[1]//2] = -1
-        self.inner_right_motor_matrix[:, img_shape[1]//2:] = -1
+        self.inner_left_motor_matrix[img_shape[0]//2:, :img_shape[1]//2] = -1.5
+        self.inner_right_motor_matrix[img_shape[0]//2:, img_shape[1]//2:] = -1.2
         self.outer_left_motor_matrix[img_shape[0]//2:, :img_shape[1]//2] = -7/13
         self.outer_right_motor_matrix[img_shape[0]//2:, img_shape[1]//2:] = -7/11
 
@@ -112,8 +112,16 @@ class Agent:
         R = rescale(R, 0, limit)
         # Tweak with the constants below to get to change velocity or to stabilize the behavior
         # Recall that the pwm signal sets the wheel torque, and is capped to be in [-1,1]
-        gain = 10 # increasing this will increasing responsitivity and reduce stability
-        const = 0.2 # power under null activation - this affects the base velocity
+
+        # Normal gain and const, ideally while in straight line
+        gain = 12 #increasing this will increasing responsitivity and reduce stability
+        const = 0.5 # power under null activation - this affects the base velocity
+        
+        # If in a curve, increase gain to increase responsitivity
+        if abs(L-R) > 0.01:
+            gain = 20
+            const = 0.2
+
         pwm_left = const + R * gain
         pwm_right = const + L * gain
         # print('>', L, R, pwm_left, pwm_right) # uncomment for debugging
