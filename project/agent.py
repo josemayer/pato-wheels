@@ -87,6 +87,10 @@ class Agent:
         self.masked = cv2.bitwise_and(image, image, mask=mask)
         return inner_mask, outer_mask
 
+    def limit_angular_velocity(self, w: float)-> float:
+        ''' Limits angular velocity to [-1.5, 1.5] '''
+        return max(-1.5, min(1.5, w))
+
     def get_pwm_control(self, v: float, w: float)-> (float, float):
         ''' Takes velocity v and angle w and returns left and right power to motors.'''
         V_l = (self.motor_gain - self.motor_trim)*(v-w*self.baseline)/self.radius
@@ -110,7 +114,7 @@ class Agent:
         if prediction[0] > 0.5:
             # activate the dodge model
             prediction = self.model_dodge.predict(img_inference, verbose=False)
-            pwm_left, pwm_right = self.get_pwm_control(prediction[0][0], prediction[0][1])
+            pwm_left, pwm_right = self.get_pwm_control(prediction[0][0]*0.8, prediction[0][1]*1.25)
             self.env.step(pwm_left, pwm_right)
             return
 
@@ -128,7 +132,7 @@ class Agent:
 
         masks = np.expand_dims(mask, axis=0)
         prediction = self.model_lf.predict(masks, verbose=False)
-        pwm_left, pwm_right = self.get_pwm_control(prediction[0][0], prediction[0][1])
+        pwm_left, pwm_right = self.get_pwm_control(prediction[0][0]*1.25, self.limit_angular_velocity(prediction[0][1]))
         self.env.step(pwm_left, pwm_right)
 
        #  for visualization
