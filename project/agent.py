@@ -52,6 +52,15 @@ class Agent:
         self.motor_trim = 0.0007500911693361842
         self.initial_pos = env.get_position()
 
+        # load model of object detection
+        self.model_od = tensorflow.keras.models.load_model('od.h5')
+        
+        # load model of dodge
+        self.model_dodge = tensorflow.keras.models.load_model('ddg.h5')
+
+        # load lane following model
+        self.model_lf = tensorflow.keras.models.load_model('lf.h5')
+
         self.score = 0
 
         key_handler = key.KeyStateHandler()
@@ -72,8 +81,8 @@ class Agent:
         self.outer_right_motor_matrix = np.zeros(shape=img_shape, dtype="float32")
         # Connecition matrices
         self.inner_left_motor_matrix[img_shape[0]//2:, :img_shape[1]//2] = -1.5
-        self.inner_right_motor_matrix[img_shape[0]//2:, img_shape[1]//2:] = -1.2
-        self.outer_left_motor_matrix[img_shape[0]//2:, :img_shape[1]//2] = -7/13
+        self.inner_right_motor_matrix[img_shape[0]//2:, img_shape[1]//2:] = -1.0
+        self.outer_left_motor_matrix[img_shape[0]//2:, :img_shape[1]//2] = -7/11
         self.outer_right_motor_matrix[img_shape[0]//2:, img_shape[1]//2:] = -7/11
 
     def preprocess(self, image):
@@ -100,11 +109,29 @@ class Agent:
         ''' Agent control loop '''
         # acquire front camera image
         img = self.env.front()
+
+        # transform image to shape (60, 80, 3)
+        img_inference = cv2.resize(img, (80, 60))
+
         # run image processing routines
         P, Q, M = self.preprocess(img) # returns inner, outter and combined mask matrices
         # build left and right motor signals from connection matrices and masks (this is a suggestion, feel free to modify it)
-        L = float(np.sum(P * self.inner_left_motor_matrix)) + float(np.sum(Q * self.outer_left_motor_matrix))
-        R = float(np.sum(P * self.inner_right_motor_matrix)) + float(np.sum(Q * self.outer_right_motor_matrix))
+        inner_left, inner_right = self.inner_left_motor_matrix, self.inner_right_motor_matrix
+        outer_left, outer_right = self.outer_left_motor_matrix, self.outer_right_motor_matrix
+        
+        # predict single image img_inference
+        img_inference = np.expand_dims(img_inference, axis=0)
+        prediction = self.model_od.predict(img_inference, verbose=False)
+        if prediction[0] > 0.5:
+            # activate the dodge model
+            prediction = self.model_dodge.predict(img_inference, verbose=False)
+            pwm_left, pwm_right = self.get_pwm_control(prediction[0][0]*0.8, prediction[0][1]*1.25)
+            self.env.step(pwm_left, pwm_right)
+            return
+
+        L = float(np.sum(P * inner_left)) + float(np.sum(Q * outer_left))
+        R = float(np.sum(P * inner_right)) + float(np.sum(Q * outer_right))
+
         # Upper bound on the values above (very loose bound)
         limit = img.shape[0]*img.shape[1]*2
         # These are big numbers, better to rescale them to the unit interval
@@ -112,7 +139,7 @@ class Agent:
         R = rescale(R, 0, limit)
         # Tweak with the constants below to get to change velocity or to stabilize the behavior
         # Recall that the pwm signal sets the wheel torque, and is capped to be in [-1,1]
-
+        
         # Normal gain and const, ideally while in straight line
         gain = 12 #increasing this will increasing responsitivity and reduce stability
         const = 0.5 # power under null activation - this affects the base velocity
@@ -126,8 +153,27 @@ class Agent:
         pwm_right = const + L * gain
         # print('>', L, R, pwm_left, pwm_right) # uncomment for debugging
         # Now send command to motors
+       
 
-        print(abs(L-R))
+        # resize masks P and Q to (60, 80)
+        p_inf = cv2.resize(P, (80, 60))
+        q_inf = cv2.resize(Q, (80, 60))
+
+        # create a 2-channel image with the masks
+        mask = np.zeros((60, 80, 2))
+        mask[:, :, 0] = p_inf
+        mask[:, :, 1] = q_inf
+        
+        # cut off the 30% top pixels
+        mask = mask[(3 * mask.shape[0])//10:, :, :]
+
+        # expand dims
+        masks = np.expand_dims(mask, axis=0)
+        prediction = self.model_lf.predict(masks, verbose=False)
+        pwm_left, pwm_right = self.get_pwm_control(prediction[0][0]*1.25, prediction[0][1])
+        self.env.step(pwm_left, pwm_right)
+        return
+
         # If the difference between sums of two masks is too small (i.e. the agent is in a straight line) then increase the base velocity
         if abs(L-R) < 0.002:
             scale = -np.log(abs(L-R))
