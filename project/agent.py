@@ -1,14 +1,8 @@
 # MAC0318 Intro to Robotics
 # Please fill-in the fields below with every team member info
 #
-# Name:
-# NUSP:
-#
-# Name:
-# NUSP:
-#
-# Name:
-# NUSP:
+# Name: José Lucas Silva Mayer
+# NUSP: 11819208
 #
 # Name:
 # NUSP:
