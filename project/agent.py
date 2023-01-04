@@ -4,8 +4,8 @@
 # Name: José Lucas Silva Mayer
 # NUSP: 11819208
 #
-# Name:
-# NUSP:
+# Name: Willian Wang
+# NUSP: 11735380
 #
 # Any supplemental material for your agent to work (e.g. neural networks, data, etc.) should be
 # uploaded elsewhere and listed down below together with a download link.
