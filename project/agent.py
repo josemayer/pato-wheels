@@ -58,6 +58,10 @@ class Agent:
         # load model of dodge
         self.model_dodge = tensorflow.keras.models.load_model('ddg.h5')
 
+        # define steps of dodge
+        self.dodge_steps = 7
+        self.dodge_count = 0
+        
         # load lane following model
         self.model_lf = tensorflow.keras.models.load_model('lf.h5')
 
@@ -87,10 +91,6 @@ class Agent:
         self.masked = cv2.bitwise_and(image, image, mask=mask)
         return inner_mask, outer_mask
 
-    def limit_angular_velocity(self, w: float)-> float:
-        ''' Limits angular velocity to [-1.5, 1.5] '''
-        return max(-1.5, min(1.5, w))
-
     def get_pwm_control(self, v: float, w: float)-> (float, float):
         ''' Takes velocity v and angle w and returns left and right power to motors.'''
         V_l = (self.motor_gain - self.motor_trim)*(v-w*self.baseline)/self.radius
@@ -107,15 +107,24 @@ class Agent:
  
         # transform image to shape (60, 80, 3)
         img_inference = cv2.resize(img, (80, 60))
-       
-        # predict single image img_inference
         img_inference = np.expand_dims(img_inference, axis=0)
-        prediction = self.model_od.predict(img_inference, verbose=False)
-        if prediction[0] > 0.5:
-            # activate the dodge model
+
+        # if the duckie is in the middle of a dodge, continue it
+        if self.dodge_count > 0:
             prediction = self.model_dodge.predict(img_inference, verbose=False)
-            pwm_left, pwm_right = self.get_pwm_control(prediction[0][0]*0.8, prediction[0][1]*1.25)
+            v, w = prediction[0][0] * 0.03125, prediction[0][1] * 0.022
+            pwm_left, pwm_right = self.get_pwm_control(v, w)
             self.env.step(pwm_left, pwm_right)
+            self.dodge_count -= 1
+            return
+    
+        # predict object detection directives
+        prediction = self.model_od.predict(img_inference, verbose=False)
+        take_care = prediction[0][0] > 0.7
+        if take_care:
+            # activate the dodge mode if image has a duckie
+            # set the dodge count to the number of steps
+            self.dodge_count = self.dodge_steps
             return
 
         # resize masks P and Q to (60, 80)
@@ -129,10 +138,12 @@ class Agent:
         
         # cut off the 30% top pixels
         mask = mask[(3 * mask.shape[0])//10:, :, :]
-
         masks = np.expand_dims(mask, axis=0)
-        prediction = self.model_lf.predict(masks, verbose=False)
-        pwm_left, pwm_right = self.get_pwm_control(prediction[0][0]*1.25, self.limit_angular_velocity(prediction[0][1]))
+ 
+        # predict lane following directives
+        prediction_lf = self.model_lf.predict(masks, verbose=False)
+        v, w = prediction_lf[0][0] * 1.25, prediction_lf[0][1]
+        pwm_left, pwm_right = self.get_pwm_control(v, w)
         self.env.step(pwm_left, pwm_right)
 
        #  for visualization
