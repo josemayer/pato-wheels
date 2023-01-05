@@ -1,5 +1,33 @@
 # MAC0318 - Projeto final
 
+## Dependências
+
+É necessário que o diretório `project` esteja dentro do diretório `duckievillage`. Todas as dependências Python já estão inclusas no ambiente Anaconda `duckietown`.
+
+```
+duckievillage
+├── project            
+│   ├── agent.py
+...
+```
+
+## Execução dos testes
+
+1. Ir para o diretório duckievillage
+
+```cd duckievillage```
+
+2. Ativar ambiente conda
+
+```conda activate duckietown```
+
+3. Executar o script com um mapa específico
+
+```python3 project/challenge.py project/examples/challenge_1```
+
+
+
+
 ## Demos
 
 https://user-images.githubusercontent.com/24196338/210675653-6ada062d-9efa-4a23-8c7e-24ab1f2bb4d7.mp4
