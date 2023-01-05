@@ -45,17 +45,17 @@ class Agent:
         self.initial_pos = env.get_position()
 
         # load model of object detection
-        self.model_od = tensorflow.keras.models.load_model('od.h5')
+        self.model_od = tensorflow.keras.models.load_model('project/models/od.h5')
         
         # load model of dodge
-        self.model_dodge = tensorflow.keras.models.load_model('ddg.h5')
+        self.model_dodge = tensorflow.keras.models.load_model('project/models/ddg.h5')
 
         # define steps of dodge
         self.dodge_steps = 7
         self.dodge_count = 0
         
         # load lane following model
-        self.model_lf = tensorflow.keras.models.load_model('lf.h5')
+        self.model_lf = tensorflow.keras.models.load_model('project/models/lf.h5')
 
         self.score = 0
 
