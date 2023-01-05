@@ -2,12 +2,13 @@
 
 ## Dependências
 
-É necessário que o diretório `project` esteja dentro do diretório `duckievillage`. Todas as dependências Python já estão inclusas no ambiente Anaconda `duckietown`.
+É necessário que o diretório `challenge` esteja dentro do diretório `duckievillage/assignments`. Todas as dependências Python já estão inclusas no ambiente Anaconda `duckietown`.
 
 ```
-duckievillage
-├── project            
-│   ├── agent.py
+duckievillage/
+├── assignments
+│   └── challenge
+│       ├── agent.py
 ...
 ```
 
@@ -17,13 +18,13 @@ duckievillage
 
 ```cd duckievillage```
 
-2. Ativar ambiente conda
+2. Ativar ambiente Anaconda
 
 ```conda activate duckietown```
 
 3. Executar o script com um mapa específico
 
-```python3 project/challenge.py project/examples/challenge_1```
+```python3 assignments/challenge/challenge.py assignments/challenge/examples/challenge_1```
 
 
 
