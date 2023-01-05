@@ -31,7 +31,6 @@ from pyglet.window import key
 import numpy as np
 import math
 import random
-from preprocessing import preprocess
 from duckievillage import create_env, FRONT_VIEW_MODE
 import cv2
 import tensorflow
