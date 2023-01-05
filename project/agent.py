@@ -31,7 +31,6 @@ from pyglet.window import key
 import numpy as np
 import math
 import random
-from connections import get_motor_inner_left_matrix, get_motor_inner_right_matrix, get_motor_outer_left_matrix, get_motor_outer_right_matrix
 from preprocessing import preprocess
 from duckievillage import create_env, FRONT_VIEW_MODE
 import cv2
